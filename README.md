@@ -51,6 +51,8 @@ python experiment_gating.py
     *   **100-200ms**: Information is loaded into WM (Input Gate Open).
     *   **200-400ms**: Information is maintained without input (Reverberation).
     *   **400-500ms**: Memory is read out only when requested (Output Gate Open).
+![alt text](assets/gating_control_result.png)
+
 
 ## 👤 Author
 
