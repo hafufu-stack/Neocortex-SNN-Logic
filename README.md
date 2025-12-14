@@ -33,7 +33,7 @@ The network learns a binary classification task (Input 0->Left, Input 1->Right) 
 ```bash
 cd v0.2_reinforcement_learning
 python experiment_rl.py
-
+```
 *   **Result**: The agent starts with random guesses (50% accuracy) and quickly converges to 100% accuracy after receiving dopamine rewards.
 ![alt text](assets/rl_success_curve.png)
 
