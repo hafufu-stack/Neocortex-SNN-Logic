@@ -14,8 +14,8 @@ This project aims to implement logical gates, working memory control, and reinfo
 - [x] **v0.2: Reinforcement Learning (R-STDP)**
     - Implemented **Reward-modulated STDP** using Eligibility Traces.
     - The network learns to map inputs to correct outputs through trial and error (Dopamine feedback).
-- [ ] **v0.3: Working Memory Control**
-    - Prefrontal Cortex (PFC) controlling Hippocampal memory retrieval.
+- [x] **v0.3: Working Memory Control**
+    - Implemented **Gating Mechanisms** (Input/Output Gates) to voluntarily hold and retrieve information, simulating Prefrontal Cortex (PFC) executive functions.
 
 ## 🧪 Experiments
 
@@ -37,6 +37,20 @@ python experiment_rl.py
 ```
 *   **Result**: The agent starts with random guesses (50% accuracy) and robustly improves to >90% accuracy as synaptic weights are optimized by dopamine.
 ![alt text](assets/rl_trace_success.png)
+
+### v0.3: Working Memory Control (Gating)
+**Location:** `v0.3_working_memory_control/`
+Implements a "Gating Mechanism" to control the flow of information into and out of Working Memory.
+```bash
+cd v0.3_working_memory_control
+python experiment_gating.py
+```
+
+*   **Result:**
+    *   **0-100ms**: Input is ignored (Gate Closed).
+    *   **100-200ms**: Information is loaded into WM (Input Gate Open).
+    *   **200-400ms**: Information is maintained without input (Reverberation).
+    *   **400-500ms**: Memory is read out only when requested (Output Gate Open).
 
 ## 👤 Author
 
