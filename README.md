@@ -26,6 +26,12 @@ Solves the XOR problem using a microcircuit of Excitatory (RS) and Inhibitory (F
 cd v0.1_xor_logic
 python experiment_xor.py
 ```
+| Input A | Input B | Output | Spikes |
+|:------:|:------:|:------:|:------:|
+| 0 | 0 | OFF | 0 ✅ |
+| 1 | 0 | ON  | 6 ✅ |
+| 0 | 1 | ON  | 4 ✅ |
+| 1 | 1 | OFF | 2 ✅ |
 
 ### v0.2: Reinforcement Learning (R-STDP with Traces)
 **Location:** `v0.2_reinforcement_learning/`
