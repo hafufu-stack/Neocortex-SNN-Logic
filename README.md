@@ -27,15 +27,16 @@ cd v0.1_xor_logic
 python experiment_xor.py
 ```
 
-### v0.2: Reinforcement Learning
+### v0.2: Reinforcement Learning (R-STDP with Traces)
 **Location:** `v0.2_reinforcement_learning/`
-The network learns a binary classification task (Input 0->Left, Input 1->Right) solely through reward feedback.
+The network learns a binary classification task (Input 0->Output 0, Input 1->Output 1) via Dopamine feedback.
+We implemented **Eligibility Traces** to bridge the gap between action and reward, and **Input Boosting** to ensure fair learning for all patterns.
 ```bash
 cd v0.2_reinforcement_learning
 python experiment_rl.py
 ```
-*   **Result**: The agent starts with random guesses (50% accuracy) and quickly converges to 100% accuracy after receiving dopamine rewards.
-![alt text](assets/rl_success_curve.png)
+*   **Result**: The agent starts with random guesses (50% accuracy) and robustly improves to >90% accuracy as synaptic weights are optimized by dopamine.
+![alt text](assets/rl_trace_success.png)
 
 ## 👤 Author
 

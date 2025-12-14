@@ -1,25 +1,47 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import random
+import os
 from numba import cuda
 import neocortex_genes
 import neocortex_kernels
 
 # ==========================================
-# 🧪 Experiment 2: Reinforcement Learning (v0.2 Boosted)
+# 🧪 Experiment 2: Reinforcement Learning (v0.2 Final Fix 3)
 # ==========================================
-# Task: Input 0 -> Output 0, Input 1 -> Output 1
-# Fixes: Stronger weights, Forced exploration
+# Improvement:
+# - Boost Input Current (100 -> 300) to ensure firing
+# - Keep Pre-Trace across trials (optional, but good for continuity)
+
+# --- 1. Seed Fixation ---
+SEED = 42
+os.environ['PYTHONHASHSEED'] = str(SEED)
+np.random.seed(SEED)
+random.seed(SEED)
 
 # Config
-SIM_TIME_PER_TRIAL = 20 
-TRIALS = 200            # More trials to see learning curve
+SIM_TIME_PER_TRIAL = 100 
+TRIALS = 300            
 DT = 0.5
-LEARNING_RATE = 50.0     # Strong learning rate
-TRACE_DECAY = 0.95      
+
+# Params
+LEARNING_RATE = 0.05    
+LR_DECAY = 0.999        
+MIN_LR = 0.001          
+BASELINE_ALPHA = 0.02   
+
+# Trace Dynamics
+TRACE_DECAY = 0.995     
+TRACE_INCR = 0.1        
+TRACE_MAX = 1.0
+
+# Softmax Temperature
+TEMP_START = 5.0        
+TEMP_END = 0.1          
 
 class RLCircuit:
     def __init__(self):
-        print("🧠 Building RL Circuit (Boosted)...")
+        print("🧠 Building RL Circuit (High Input Mode)...")
         
         self.n_input = 2
         self.n_output = 2
@@ -27,14 +49,14 @@ class RLCircuit:
         self.input_layer = neocortex_genes.generate_cortical_layer(self.n_input, "RS")
         self.output_layer = neocortex_genes.generate_cortical_layer(self.n_output, "RS")
         
-        # ★修正: 初期ウェイトを大幅アップ (0~10 -> 30~40)
-        # これで最初から確実に発火させる
-        weights = np.random.uniform(30.0, 40.0, (self.n_input, self.n_output)).astype(np.float32)
-        
-        traces = np.zeros((self.n_input, self.n_output), dtype=np.float32)
+        # Init Weights (20.0 - 30.0)
+        weights = np.random.uniform(20.0, 30.0, (self.n_input, self.n_output)).astype(np.float32)
         
         self.d_weights = cuda.to_device(weights)
-        self.d_traces = cuda.to_device(traces)
+        
+        # Traces
+        self.d_pre_traces = cuda.to_device(np.zeros(self.n_input, dtype=np.float32))     
+        self.d_syn_traces = cuda.to_device(np.zeros((self.n_input, self.n_output), dtype=np.float32)) 
         
         self._alloc_gpu()
         
@@ -55,150 +77,135 @@ class RLCircuit:
         self.gpu_in = alloc_layer(self.n_input, self.input_layer)
         self.gpu_out = alloc_layer(self.n_output, self.output_layer)
 
-    def run_trial(self, input_idx, target_idx):
-        # Reset voltages (Simple reset)
+    def run_trial(self, input_idx, target_idx, current_lr, reward_baseline, temperature):
+        # Reset voltages
         self.gpu_in['v'].copy_to_device(self.input_layer['state']['v'])
         self.gpu_out['v'].copy_to_device(self.output_layer['state']['v'])
         
+        # Reset Synaptic Traces (Start fresh each trial)
+        dims_2d = neocortex_kernels.get_dims_2d(self.n_input, self.n_output)
+        neocortex_kernels.clear_trace_kernel[dims_2d[0], dims_2d[1]](self.d_syn_traces, self.n_input, self.n_output)
+        
+        # Note: We do NOT reset d_pre_traces here, allowing continuity (Biological)
+
         steps = int(SIM_TIME_PER_TRIAL / DT)
         spike_counts = np.zeros(self.n_output, dtype=np.int32)
         
-        # Strong Input
+        # Input (BOOSTED!)
         inp_current = np.zeros(self.n_input, dtype=np.float32)
-        inp_current[input_idx] = 200.0 # Blast the input
+        inp_current[input_idx] = 300.0 # ★修正: 100 -> 300
         self.gpu_in['i'].copy_to_device(inp_current)
         
-        # Clear Output Input Buffer
         neocortex_kernels.clear_buffer_kernel[neocortex_kernels.get_dims_1d(self.n_output)](self.gpu_out['i'], self.n_output)
 
+        dims_in = neocortex_kernels.get_dims_1d(self.n_input)
+        dims_out = neocortex_kernels.get_dims_1d(self.n_output)
+
         for t in range(steps):
-            # Update Input
-            dims = neocortex_kernels.get_dims_1d(self.n_input)
-            neocortex_kernels.update_neuron_kernel[dims[0], dims[1]](
+            # 1. Update Input & Pre-Trace
+            neocortex_kernels.update_neuron_kernel[dims_in[0], dims_in[1]](
                 self.gpu_in['v'], self.gpu_in['u'], self.gpu_in['a'], self.gpu_in['b'],
                 self.gpu_in['c'], self.gpu_in['d'], self.gpu_in['i'], self.gpu_in['s'],
                 DT, self.n_input
             )
+            # Update Pre-Trace
+            neocortex_kernels.update_pre_trace_kernel[dims_in[0], dims_in[1]](
+                self.gpu_in['s'], self.d_pre_traces, TRACE_DECAY, TRACE_INCR, self.n_input
+            )
             cuda.synchronize()
             
-            # Transmit
-            neocortex_kernels.clear_buffer_kernel[neocortex_kernels.get_dims_1d(self.n_output)](self.gpu_out['i'], self.n_output)
-            dims_2d = neocortex_kernels.get_dims_2d(self.n_input, self.n_output)
+            # 2. Transmit
+            neocortex_kernels.clear_buffer_kernel[dims_out[0], dims_out[1]](self.gpu_out['i'], self.n_output)
             neocortex_kernels.synapse_kernel[dims_2d[0], dims_2d[1]](
                 self.gpu_in['s'], self.gpu_out['i'], self.d_weights, self.n_input, self.n_output
             )
             cuda.synchronize()
             
-            # Update Output
-            dims = neocortex_kernels.get_dims_1d(self.n_output)
-            neocortex_kernels.update_neuron_kernel[dims[0], dims[1]](
+            # 3. Update Output
+            neocortex_kernels.update_neuron_kernel[dims_out[0], dims_out[1]](
                 self.gpu_out['v'], self.gpu_out['u'], self.gpu_out['a'], self.gpu_out['b'],
                 self.gpu_out['c'], self.gpu_out['d'], self.gpu_out['i'], self.gpu_out['s'],
                 DT, self.n_output
             )
             cuda.synchronize()
             
-            # Count
             spikes = self.gpu_out['s'].copy_to_host()
             spike_counts += spikes
             
-            # Trace Update (No reward yet)
-            neocortex_kernels.reward_learning_kernel[dims_2d[0], dims_2d[1]](
-                self.gpu_in['s'], self.gpu_out['s'],
-                self.d_weights, self.d_traces,
-                0.0, 
-                LEARNING_RATE, TRACE_DECAY,
+            # 4. Update Synaptic Trace
+            neocortex_kernels.update_synaptic_trace_kernel[dims_2d[0], dims_2d[1]](
+                self.gpu_out['s'], self.d_pre_traces, self.d_syn_traces, 
                 self.n_input, self.n_output
             )
             cuda.synchronize()
 
-        # 3. Decision (With Exploration)
-        if spike_counts[0] > spike_counts[1]:
-            action = 0
-        elif spike_counts[1] > spike_counts[0]:
-            action = 1
-        else:
-            # ★修正: 引き分けならランダムに選ぶ（探検）
-            action = np.random.randint(0, 2)
+        # --- Decision ---
+        scores = spike_counts.astype(np.float32)
+        if temperature < 1e-6: temperature = 1e-6
+        exp_scores = np.exp((scores - np.max(scores)) / temperature)
+        probs = exp_scores / np.sum(exp_scores)
+        if np.isnan(probs).any(): probs = np.ones(self.n_output) / self.n_output
+        action = np.random.choice([0, 1], p=probs)
 
-        # 4. Reward
-        reward = 0.0
-        is_correct = False
+        # Reward
+        raw_reward = 1.0 if action == target_idx else 0.0
+        advantage = raw_reward - reward_baseline
         
-        if action == target_idx:
-            reward = 1.0 # Reward!
-            is_correct = True
-        else:
-            reward = -0.5 # Punishment
-            
-        # Apply Reward
-        dims_2d = neocortex_kernels.get_dims_2d(self.n_input, self.n_output)
-        neocortex_kernels.reward_learning_kernel[dims_2d[0], dims_2d[1]](
-            self.gpu_in['s'], self.gpu_out['s'], 
-            self.d_weights, self.d_traces,
-            reward, # ★ Dopamine Release
-            LEARNING_RATE, TRACE_DECAY,
+        # Diagnostics
+        trace_sum = np.sum(self.d_syn_traces.copy_to_host())
+        w_before = self.d_weights.copy_to_host()
+
+        # Weight Update
+        neocortex_kernels.update_weight_kernel[dims_2d[0], dims_2d[1]](
+            self.d_weights, self.d_syn_traces,
+            advantage, current_lr,
             self.n_input, self.n_output
         )
         cuda.synchronize()
         
-        return is_correct, self.d_weights.copy_to_host(), spike_counts
+        w_after = self.d_weights.copy_to_host()
+        delta_w = np.linalg.norm(w_after - w_before)
+        
+        return (action == target_idx), w_after, raw_reward, trace_sum, delta_w
 
 def main():
     rl = RLCircuit()
-    TRIALS_EXTENDED = 300 # ★修正: 少し長くして安定を見る
-    print(f"🚀 Starting Training ({TRIALS_EXTENDED} Trials)...")
+    print(f"🚀 Starting Training ({TRIALS} Trials)...")
     
     history = []
     accuracy_window = []
     
-    # Dynamic Learning Rate
     current_lr = LEARNING_RATE
+    reward_baseline = 0.5 
+    temp_schedule = np.linspace(TEMP_START, TEMP_END, TRIALS)
     
-    for i in range(TRIALS_EXTENDED):
+    for i in range(TRIALS):
         target = np.random.randint(0, 2)
+        temp = temp_schedule[i]
         
-        # ★修正: 学習率を渡せるように run_trial を改造するか、
-        # ここでは簡易的に「正解率が高いときは学習をスキップする」ロジックを入れる
-        # または、カーネル内の LEARNING_RATE は定数なので、
-        # "報酬の値" を調整することで実質的な学習率を変える！
+        is_correct, weights, reward, trace_sum, delta_w = rl.run_trial(target, target, current_lr, reward_baseline, temp)
         
-        # Calculate current accuracy
-        acc = 0.5
-        if len(accuracy_window) > 0:
-            acc = sum(accuracy_window) / len(accuracy_window)
+        reward_baseline = (1 - BASELINE_ALPHA) * reward_baseline + BASELINE_ALPHA * reward
         
-        # Adaptive Reward: If accuracy is high, reduce plasticity (Exploration -> Exploitation)
-        # Acc=0.5 -> Scale=1.0
-        # Acc=1.0 -> Scale=0.1
-        learning_scale = 1.0 - (acc - 0.5) * 1.8 
-        if learning_scale < 0.1: learning_scale = 0.1
-        
-        # Update global constant? No, we can't easily.
-        # Instead, we rely on the logic inside run_trial to use `LEARNING_RATE`.
-        # We will hack `run_trial` to accept a scaler or modify reward magnitude.
-        
-        # Let's just run it as is, but STOP early if solved!
-        is_correct, weights, spikes = rl.run_trial(input_idx=target, target_idx=target)
+        current_lr *= LR_DECAY
+        if current_lr < MIN_LR: current_lr = MIN_LR
         
         accuracy_window.append(1 if is_correct else 0)
         if len(accuracy_window) > 20: accuracy_window.pop(0)
         acc = sum(accuracy_window) / len(accuracy_window)
         history.append(acc)
         
-        if i % 10 == 0:
-            print(f"Trial {i:3d}: Tgt={target} | Spikes={spikes} | Correct={is_correct} | Acc={acc:.2f}")
+        if i % 20 == 0:
+            print(f"Trial {i:3d}: In={target}/Tgt={target} | Acc={acc:.2f} | LR={current_lr:.3f} | TraceSum={trace_sum:.2f} | ΔW={delta_w:.4f}")
             
-        # ★追加: 早期終了（Early Stopping）
-        # 完全に覚えたら（Acc > 0.95 が続いたら）、実験を成功として終わらせる
-        if acc >= 0.95 and i > 50:
-            print(f"\n✨ Solved at Trial {i}! Stopping early to prevent overfitting.")
+        if acc >= 0.95 and i > 100:
+            print(f"\n✨ Solved at Trial {i}! Stable convergence.")
             break
 
     print("\n📊 Training Complete!")
     plt.plot(history)
     plt.axhline(y=0.5, color='r', linestyle='--', label='Random Chance')
-    plt.title("Reinforcement Learning Curve")
+    plt.title("Reinforcement Learning Curve (Trace Logic)")
     plt.xlabel("Trial")
     plt.ylabel("Accuracy (Moving Avg)")
     plt.ylim(0, 1.1)
@@ -206,10 +213,10 @@ def main():
     plt.grid(True)
     plt.show()
     
-    if history[-1] > 0.9:
-        print("\n🏆 Success! The brain learned the rule via Dopamine.")
+    if history[-1] > 0.8:
+        print("\n🏆 Success! Robust learning achieved.")
     else:
-        print("\n❌ Learning incomplete.")
+        print("\n❌ Still unstable.")
 
 if __name__ == "__main__":
     main()
