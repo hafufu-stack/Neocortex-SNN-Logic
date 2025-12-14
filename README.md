@@ -36,6 +36,7 @@ cd v0.2_reinforcement_learning
 python experiment_rl.py
 ```
 *   **Result**: The agent starts with random guesses (50% accuracy) and robustly improves to >90% accuracy as synaptic weights are optimized by dopamine.
+
 ![alt text](assets/rl_trace_success.png)
 
 ### v0.3: Working Memory Control (Gating)
@@ -51,6 +52,7 @@ python experiment_gating.py
     *   **100-200ms**: Information is loaded into WM (Input Gate Open).
     *   **200-400ms**: Information is maintained without input (Reverberation).
     *   **400-500ms**: Memory is read out only when requested (Output Gate Open).
+
 ![alt text](assets/gating_control_result.png)
 
 
