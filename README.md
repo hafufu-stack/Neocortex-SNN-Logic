@@ -35,6 +35,7 @@ python experiment_xor.py
 | 1 | 0 | ON  | 6 ✅ |
 | 0 | 1 | ON  | 4 ✅ |
 | 1 | 1 | OFF | 2 ✅ |
+
 **Note:** The output state is classified as **ON** only when the spike count is **3 or higher**. (0-2 spikes are considered noise/OFF).
 
 ### v0.2: Reinforcement Learning (R-STDP with Traces)
