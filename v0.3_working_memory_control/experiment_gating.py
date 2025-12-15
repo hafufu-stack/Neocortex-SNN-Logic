@@ -206,7 +206,7 @@ def main():
     plt.ylabel('Gate Status')
     plt.ylim(-0.1, 1.1)
     plt.xlim(0, SIM_TIME)
-    plt.yticks([0, 1]) # 0と1だけ表示
+    plt.yticks([0, 1]) # Show only 0 and 1
     plt.legend(loc='center right')
     plt.title("2. PFC Control Signals (Gates)")
     plt.grid(True, alpha=0.3)

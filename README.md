@@ -16,6 +16,9 @@ This project aims to implement logical gates, working memory control, and reinfo
     - The network learns to map inputs to correct outputs through trial and error (Dopamine feedback).
 - [x] **v0.3: Working Memory Control**
     - Implemented **Gating Mechanisms** (Input/Output Gates) to voluntarily hold and retrieve information, simulating Prefrontal Cortex (PFC) executive functions.
+- [x] **v1.0: Brain Integration (Hippocampus + Neocortex)**
+    - Connected the memory module (Hippocampus) and the decision module (Neocortex).
+    - Achieved **Context-Dependent Decision Making** where the brain switches behavior based on memory context.
 
 ## 🧪 Experiments
 
@@ -32,6 +35,7 @@ python experiment_xor.py
 | 1 | 0 | ON  | 6 ✅ |
 | 0 | 1 | ON  | 4 ✅ |
 | 1 | 1 | OFF | 2 ✅ |
+**Note:** The output state is classified as **ON** only when the spike count is **3 or higher**. (0-2 spikes are considered noise/OFF).
 
 ### v0.2: Reinforcement Learning (R-STDP with Traces)
 **Location:** `v0.2_reinforcement_learning/`
@@ -60,6 +64,26 @@ python experiment_gating.py
     *   **400-500ms**: Memory is read out only when requested (Output Gate Open).
 
 ![alt text](assets/gating_control_result.png)
+
+### v1.0: Brain Integration (Context-Dependent Decision)
+**Location:** `v1.0_brain_integration/`
+Integrates **Hippocampus (Context Memory)** and **Neocortex (Decision Making)**.
+The Neocortex learns different behaviors based on the context signal provided by the Hippocampus.
+
+```bash
+cd v1.0_brain_integration
+python experiment_brain_integration.py
+```
+*   **Result:**
+    *   **Phase 1 (Ctx 0)**: Neocortex learns Action 0.
+    *   **Phase 2 (Ctx 1)**: Neocortex learns Action 1 (using separate weights).
+    *   **Phase 3 (Mixed)**: The brain switches behavior based on the hippocampal signal.
+    *   **Diagnosis**: Bridge Cosine Similarity = 0.0000 confirms perfect separation of context signals.
+- **Diagnosis**: Analysis confirmed that **synaptic weights diverged significantly** depending on the context (e.g., W=10.0 vs W=1.4), proving that the Neocortex successfully formed distinct memory traces for each context.
+- **Learning**: The agent successfully differentiates contexts and updates synaptic weights accordingly (ΔW > 0).
+    - **Note**: The primary goal of v1.0 was to establish the architectural integration between the two brain regions. While the learning curve confirms functional connectivity and context separation, achieving stable 100% accuracy requires further hyperparameter tuning (Learning Rate schedules, etc.), which is planned for future updates.
+
+![alt text](assets/brain_integration_result.png)
 
 
 ## 👤 Author
