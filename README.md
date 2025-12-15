@@ -79,7 +79,6 @@ python experiment_brain_integration.py
     *   **Phase 1 (Ctx 0)**: Neocortex learns Action 0.
     *   **Phase 2 (Ctx 1)**: Neocortex learns Action 1 (using separate weights).
     *   **Phase 3 (Mixed)**: The brain switches behavior based on the hippocampal signal.
-    *   **Diagnosis**: Bridge Cosine Similarity = 0.0000 confirms perfect separation of context signals.
 - **Diagnosis**: Analysis confirmed that **synaptic weights diverged significantly** depending on the context (e.g., W=10.0 vs W=1.4), proving that the Neocortex successfully formed distinct memory traces for each context.
 - **Learning**: The agent successfully differentiates contexts and updates synaptic weights accordingly (ΔW > 0).
     - **Note**: The primary goal of v1.0 was to establish the architectural integration between the two brain regions. While the learning curve confirms functional connectivity and context separation, achieving stable 100% accuracy requires further hyperparameter tuning (Learning Rate schedules, etc.), which is planned for future updates.
