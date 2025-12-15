@@ -12,10 +12,8 @@ import neocortex_genes as c_genes
 import neocortex_kernels as c_kernels
 
 # ==========================================
-# 🧪 Experiment 16: Brain Integration (v1.0 Final)
+# 🧪 Experiment 16: Brain Integration (v1.0 Final Fixed)
 # ==========================================
-# Objective: Context-Dependent Decision Making.
-# The Neocortex must choose an action based on context provided by the Hippocampus.
 
 # Seed Fixation
 SEED = 42
@@ -37,20 +35,22 @@ N_H_CA1 = 2000
 N_CX_IN = 2000 
 N_CX_OUT = 2   
 
-# Parameters (Tuned for Stability and Sparsity)
+# Parameters (Calibrated for Stability)
 WEIGHT_BRIDGE = 20.0  
 LR_CX = np.float32(0.05) 
-TRACE_DECAY = np.float32(0.99)
-TRACE_INCR = np.float32(0.05) # Small increment to prevent saturation
+TRACE_DECAY = np.float32(0.95) # Fast decay for sharp learning
+TRACE_INCR = np.float32(0.05)  # Small increment to prevent saturation
 BASELINE_ALPHA = 0.05
-ADV_SCALE = 2.0 
+ADV_SCALE = 2.0
 LR_CTX = {0: float(LR_CX), 1: float(LR_CX)*1.5} 
 TR_EPS = 1e-8
-BRIDGE_GAIN = 0.05
+
+# Bridge Gain (High gain to amplify normalized input)
+BRIDGE_GAIN = 50.0   
 
 class IntegratedBrain:
     def __init__(self):
-        print("🧠 Building Integrated Brain (Context Separation)...")
+        print("🧠 Building Integrated Brain (Final Fixed)...")
         
         # --- 1. Hippocampus Setup ---
         self.h_dg = h_genes.generate_network_params(N_H_DG, "GC")
@@ -59,14 +59,10 @@ class IntegratedBrain:
         
         all_idx = np.arange(N_H_DG)
         np.random.shuffle(all_idx)
-        # Expansion: Use 5% of DG neurons for each context input
         n_each = int(N_H_DG * 0.05)
         self.ctx0_idx = all_idx[:n_each]
         self.ctx1_idx = all_idx[n_each:2*n_each]
         
-        overlap = np.intersect1d(self.ctx0_idx, self.ctx1_idx)
-        print(f"   DG Context Overlap: {len(overlap)}")
-
         mf_p, mf_i, mf_w = h_genes.generate_connections(N_H_DG, N_H_CA3, 0.01, 30.0) 
         rec_p, rec_i, rec_w = h_genes.generate_connections(N_H_CA3, N_H_CA3, 0.05, 0.0, True) 
         sc_p, sc_i, sc_w = h_genes.generate_connections(N_H_CA3, N_H_CA1, 0.1, 5.0, False) 
@@ -85,7 +81,6 @@ class IntegratedBrain:
         self.c_in = c_genes.generate_cortical_layer(N_CX_IN, "RS")
         self.c_out = c_genes.generate_cortical_layer(N_CX_OUT, "RS")
         
-        # Initialize weights with smaller values (0.5~3.0) to prevent initial saturation
         cx_weights = np.random.uniform(0.5, 3.0, (N_CX_IN, N_CX_OUT)).astype(np.float32)
         self.d_cx_weights_ctx0 = cuda.to_device(cx_weights.copy())
         self.d_cx_weights_ctx1 = cuda.to_device(cx_weights.copy())
@@ -96,12 +91,10 @@ class IntegratedBrain:
         self.d_c_in = self._alloc_c_layer(N_CX_IN, self.c_in)
         self.d_c_out = self._alloc_c_layer(N_CX_OUT, self.c_out)
         
-        # Dedicated buffer for bridge input
+        # ★ FIXED: Allocate Bridge Buffer (This was missing!)
         self.d_bridge_in = cuda.to_device(np.zeros(N_CX_IN, dtype=np.float32))
         
         # Bridge Mask (Topographic Block Structure)
-        # CA1[Top-Half] -> Cortex[Top-Half]
-        # CA1[Bottom-Half] -> Cortex[Bottom-Half]
         bridge_prob = 0.05 
         bridge_mask = np.zeros((N_H_CA1, N_CX_IN), dtype=np.float32)
         half_h = N_H_CA1 // 2
@@ -147,18 +140,16 @@ class IntegratedBrain:
         }
 
     def run_trial(self, context_idx, target_action, current_lr, is_testing=False):
-        # Reset voltages
         self.d_h_dg['v'].copy_to_device(self.h_dg['state']['v'])
         self.d_h_ca3['v'].copy_to_device(self.h_ca3['state']['v'])
         self.d_h_ca1['v'].copy_to_device(self.h_ca1['state']['v'])
         self.d_c_in['v'].copy_to_device(self.c_in['state']['v'])
         self.d_c_out['v'].copy_to_device(self.c_out['state']['v'])
         
-        # Reset Traces per trial
+        # Clear Traces
         c_kernels.clear_trace_kernel[self.dim_c_syn[0], self.dim_c_syn[1]](self.d_cx_traces, N_CX_IN, N_CX_OUT)
         c_kernels.clear_buffer_kernel[self.dim_c_in[0], self.dim_c_in[1]](self.d_c_pre_trace, N_CX_IN)
 
-        # Select context-specific weights
         if context_idx == 0: d_current_weights = self.d_cx_weights_ctx0
         else:                d_current_weights = self.d_cx_weights_ctx1
 
@@ -166,18 +157,13 @@ class IntegratedBrain:
         cx_spike_counts = np.zeros(N_CX_OUT, dtype=np.int32)
         cx_in_spike_counts = np.zeros(N_CX_IN, dtype=np.int32) 
         
-        # Hippocampus Input (Context)
         dg_input = np.zeros(N_H_DG, dtype=np.float32)
         if context_idx == 0: dg_input[self.ctx0_idx] = 100.0 
         else:                dg_input[self.ctx1_idx] = 100.0
         self.d_h_dg['i'].copy_to_device(dg_input)
         
-        # Visual Stimulus (Separated by context to assist learning)
-        vis_stimulus = np.zeros(N_CX_IN, dtype=np.float32)
-        if context_idx == 0:
-            vis_stimulus[:N_CX_IN//2] = 2.0 # Top half active
-        else:
-            vis_stimulus[N_CX_IN//2:] = 2.0 # Bottom half active
+        # Baseline Visual Stimulus (Increased to 10.0)
+        vis_stimulus = np.full(N_CX_IN, 10.0, dtype=np.float32)
 
         for t in range(steps):
             # --- 1. Hippocampus Step ---
@@ -196,7 +182,6 @@ class IntegratedBrain:
                 self.d_h_ca3['v'], self.d_h_ca3['u'], self.d_h_ca3['a'], self.d_h_ca3['b'], self.d_h_ca3['c'], self.d_h_ca3['d'],
                 self.d_h_ca3['i'], self.d_h_ca3['s'], 0.0, DT, N_H_CA3
             )
-            # CA3 STDP OFF for stability
             cuda.synchronize()
             host_spikes = self.d_h_ca3['s'].copy_to_host()
             self.d_ca3_ps.copy_to_device(host_spikes)
@@ -211,21 +196,17 @@ class IntegratedBrain:
             )
             cuda.synchronize()
 
-            # --- 2. Bridge (Normalized) ---
-            # Clear Bridge Buffer
+            # --- 2. Bridge (Gain Controlled) ---
             c_kernels.clear_buffer_kernel[self.dim_c_in[0], self.dim_c_in[1]](self.d_bridge_in, N_CX_IN)
-            # Matmul to Bridge Buffer
             h_kernels.bridge_matmul_kernel[self.dim_bridge[0], self.dim_bridge[1]](
                 self.d_h_ca1['s'], self.d_bridge_w, self.d_bridge_in, N_H_CA1, N_CX_IN
             )
             cuda.synchronize()
             
-            # Combine on Host for Normalization & Gain Control
             bridge_host = self.d_bridge_in.copy_to_host()
             bmax = np.max(bridge_host)
             if bmax > 1e-9: bridge_host = bridge_host / bmax
             
-            # Reset Neocortex Input Buffer
             c_kernels.clear_buffer_kernel[self.dim_c_in[0], self.dim_c_in[1]](self.d_c_in['i'], N_CX_IN)
             combined = vis_stimulus + (bridge_host * BRIDGE_GAIN)
             self.d_c_in['i'].copy_to_device(combined)
@@ -254,7 +235,6 @@ class IntegratedBrain:
             spikes = self.d_c_out['s'].copy_to_host()
             cx_spike_counts += spikes
             
-            # Trace Update
             c_kernels.update_synaptic_trace_kernel[self.dim_c_syn[0], self.dim_c_syn[1]](
                 self.d_c_out['s'], self.d_c_pre_trace, self.d_cx_traces, 
                 N_CX_IN, N_CX_OUT, self.d_c_in['s']
@@ -271,7 +251,7 @@ class IntegratedBrain:
             if np.isnan(probs).any(): probs = np.ones(N_CX_OUT) / N_CX_OUT
             action = np.random.choice([0, 1], p=probs)
         
-        # Return necessary data
+        # Reward
         return (action == target_action), d_current_weights, cx_spike_counts, cx_in_spike_counts, bridge_host
 
 def main():
@@ -294,7 +274,6 @@ def main():
     for phase_name, fixed_ctx in phases:
         print(f"\n--- {phase_name} ---", flush=True)
         
-        # Reset for Phase 2
         if phase_name == "Phase 2 (Ctx 1 Only)":
             baseline[1] = 0.5
             brain.d_cx_traces.copy_to_device(np.zeros((N_CX_IN, N_CX_OUT), dtype=np.float32))
@@ -320,15 +299,18 @@ def main():
                 advantage = np.clip(reward - baseline[ctx], -1.0, 1.0)
                 baseline[ctx] = (1 - BASELINE_ALPHA) * baseline[ctx] + BASELINE_ALPHA * reward
                 
-                # Trace Fallback
                 tr_host = brain.d_cx_traces.copy_to_host()
                 tr_sum = tr_host.sum()
                 
+                # Trace Fallback
                 if tr_sum <= 1e-6:
                     pre_s = (in_spikes > 0).astype(np.float32)
                     post_s = (spikes > 0).astype(np.float32)
                     tr_host = np.outer(pre_s, post_s)
                     tr_sum = tr_host.sum()
+                    if tr_sum <= 1e-6:
+                         tr_host = (np.random.rand(N_CX_IN, N_CX_OUT) * 1e-3).astype(np.float32)
+                         tr_sum = tr_host.sum()
                 
                 if tr_sum > 0.0:
                     gmax = tr_host.max()
@@ -341,18 +323,22 @@ def main():
                 dims_syn = c_kernels.get_dims_2d(N_CX_IN, N_CX_OUT)
                 d_w = brain.d_cx_weights_ctx0 if ctx == 0 else brain.d_cx_weights_ctx1
                 
+                lr_val = LR_CTX[ctx]
+                w_before = d_w.copy_to_host()
+
                 c_kernels.update_weight_kernel[dims_syn[0], dims_syn[1]](
                     d_w, brain.d_cx_traces,
-                    adv_scaled, LR_CX,
+                    adv_scaled, np.float32(lr_val),
                     N_CX_IN, N_CX_OUT
                 )
                 cuda.synchronize()
                 
                 w_after = d_w.copy_to_host()
-                delta_w = 0.0 # Omitted for speed
+                delta_w = np.linalg.norm(w_after - w_before)
             else:
                 delta_w = 0.0
                 tr_sum = 0.0
+                trace_sum = 0.0
 
             win_window.append(1 if is_correct else 0)
             if len(win_window) > 20: win_window.pop(0)
@@ -361,7 +347,7 @@ def main():
             
             total_trial += 1
             if i % 20 == 0:
-                bridge_sum = float(np.sum(host_bridge))
+                bridge_sum = float(np.sum(host_bridge * BRIDGE_GAIN)) # Show actual scaled input
                 ca1_rate = float(np.mean(brain.d_h_ca1['s'].copy_to_host()))
                 if not is_testing:
                     trace_sum = float(np.sum(brain.d_cx_traces.copy_to_host()))
@@ -371,7 +357,7 @@ def main():
                     syn_max = 0.0
                 w_mean = float(np.mean(weights.copy_to_host()))
                 
-                print(f"Trial {total_trial:3d}: Ctx={ctx} | Res={'✅' if is_correct else '❌'} | Acc={acc:.2f} | Br={bridge_sum:.0f} | Tr={trace_sum:.1f} | SynMax={syn_max:.2f}")
+                print(f"Trial {total_trial:3d}: Ctx={ctx} | Res={'✅' if is_correct else '❌'} | Acc={acc:.2f} | Br={bridge_sum:.0f} | Tr={trace_sum:.1f} | SynMax={syn_max:.2f} | ΔW={delta_w:.4f} | W={w_mean:.1f}")
 
                 b0 = [b for c, b in bridge_store if c == 0]
                 b1 = [b for c, b in bridge_store if c == 1]
