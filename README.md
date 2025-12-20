@@ -18,7 +18,10 @@ This project aims to implement logical gates, working memory control, and reinfo
     - Implemented **Gating Mechanisms** (Input/Output Gates) to voluntarily hold and retrieve information, simulating Prefrontal Cortex (PFC) executive functions.
 - [x] **v1.0: Brain Integration (Hippocampus + Neocortex)**
     - Connected the memory module (Hippocampus) and the decision module (Neocortex).
-    - Achieved **Context-Dependent Decision Making** where the brain switches behavior based on memory context.
+    - Established the architectural foundation for context-dependent signal processing.
+- [x] **v2.0: Trinity Architecture (HC + CX + BG)**
+    - Integrated **Basal Ganglia (Action Selection)** with **D1 (Go)** and **D2 (No-Go)** pathways.
+    - Achieved robust **Context-Dependent Decision Making** using **Reward Prediction Error (RPE)** and **Homeostatic Regulation**.
 
 ## 🧪 Experiments
 
@@ -66,25 +69,34 @@ python experiment_gating.py
 
 ![alt text](assets/gating_control_result.png)
 
-### v1.0: Brain Integration (Context-Dependent Decision)
+### v1.0: Brain Integration (Integration Test)
 **Location:** `v1.0_brain_integration/`
 Integrates **Hippocampus (Context Memory)** and **Neocortex (Decision Making)**.
-The Neocortex learns different behaviors based on the context signal provided by the Hippocampus.
-
-```bash
-cd v1.0_brain_integration
-python experiment_brain_integration.py
-```
-*   **Result:**
-    *   **Phase 1 (Ctx 0)**: Neocortex learns Action 0.
-    *   **Phase 2 (Ctx 1)**: Neocortex learns Action 1 (using separate weights).
-    *   **Phase 3 (Mixed)**: The brain switches behavior based on the hippocampal signal.
-- **Diagnosis**: Analysis confirmed that **synaptic weights diverged significantly** depending on the context (e.g., W=10.0 vs W=1.4), proving that the Neocortex successfully formed distinct memory traces for each context.
-- **Learning**: The agent successfully differentiates contexts and updates synaptic weights accordingly (ΔW > 0).
-    - **Note**: The primary goal of v1.0 was to establish the architectural integration between the two brain regions. While the learning curve confirms functional connectivity and context separation, achieving stable 100% accuracy requires further hyperparameter tuning (Learning Rate schedules, etc.), which is planned for future updates.
+This version focused on establishing the connection architecture between two distinct brain regions.
+*   **Result**: Confirmed that synaptic weights diverge significantly based on hippocampal context signals.
 
 ![alt text](assets/brain_integration_result.png)
 
+### v2.0: Trinity Architecture (The "Architect" Model)
+**Location:** `v2.0_trinity_integration/`
+**The Complete Model.** Integrates Hippocampus (Context), Neocortex (Perception), and **Basal Ganglia (Action Selection)**.
+
+To solve the "Context-Dependent Decision Making" task (where rules flip based on context), we implemented biologically realistic mechanisms:
+1.  **D1/D2 Pathways**: Distinct "Go" (D1) and "No-Go" (D2) pathways in the Basal Ganglia.
+2.  **Reward Prediction Error (RPE)**: Learning driven by the difference between expected and actual reward.
+3.  **Homeostasis**: Synaptic scaling and lateral inhibition to prevent "epileptic" network states and ensure sparse firing.
+
+```bash
+cd v2.0_trinity_integration
+python experiment_brain_integration.py
+```
+
+*   **Result**: 
+    *   The model successfully learns to switch rules between Context 0 and Context 1.
+    *   In Phase 3 (Mixed Context), it achieves **>75% accuracy**, overcoming the "Catastrophic Forgetting" problem observed in earlier versions.
+    *   The graph shows stable learning curves with appropriate firing rates (~3%), mimicking biological efficiency.
+
+![alt text](assets/result_v2.0_trinity_success.png)
 
 ## 👤 Author
 
