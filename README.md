@@ -21,7 +21,7 @@ This project aims to implement logical gates, working memory control, and reinfo
     - Established the architectural foundation for context-dependent signal processing.
 - [x] **v2.0: Trinity Architecture (HC + CX + BG)**
     - Integrated **Basal Ganglia (Action Selection)** with **D1 (Go)** and **D2 (No-Go)** pathways.
-    - Achieved robust **Context-Dependent Decision Making** using **Reward Prediction Error (RPE)** and **Homeostatic Regulation**.
+    - Achieved **Context-Dependent Decision Making** architecture. (Stability improvements in progress).
 
 ## 🧪 Experiments
 
@@ -92,9 +92,10 @@ python experiment_brain_integration.py
 ```
 
 *   **Result**: 
-    *   The model successfully learns to switch rules between Context 0 and Context 1.
-    *   In Phase 3 (Mixed Context), it achieves **>75% accuracy**, overcoming the "Catastrophic Forgetting" problem observed in earlier versions.
-    *   The graph shows stable learning curves with appropriate firing rates (~3%), mimicking biological efficiency.
+    *   The model demonstrates the ability to switch rules between Context 0 and Context 1.
+    *   **Proof of Concept**: In successful trials, the agent adapts to rule changes, showing distinct activation patterns in the Basal Ganglia.
+    *   **Current Status**: While the architecture is functional, the learning stability in the mixed phase varies between runs (Accuracy typically fluctuates between 40% - 80%).
+    *   **Future Work**: Fine-tuning the balance between D1 (Go) and D2 (No-Go) learning rates to achieve stable convergence is the next objective.
 
 ![alt text](assets/result_v2.0_trinity_success.png)
 
