@@ -22,6 +22,10 @@ This project aims to implement logical gates, working memory control, and reinfo
 - [x] **v2.0: Trinity Architecture (HC + CX + BG)**
     - Integrated **Basal Ganglia (Action Selection)** with **D1 (Go)** and **D2 (No-Go)** pathways.
     - Achieved **Context-Dependent Decision Making** architecture. (Stability improvements in progress).
+- [x] **v3.0: Genesis Architecture (The "Leviathan" Model)**
+    - Scaled up to **>30,000 Neurons** using sparse connectivity on RTX 5080.
+    - Integrated **Cerebellum (Fine-tuning)**, **Thalamus (Gating)**, and **Amygdala (Emotion)**.
+    - Implemented **Homeostasis** and **L2 Normalization** for long-term stability.
 
 ## 🧪 Experiments
 
@@ -43,8 +47,7 @@ python experiment_xor.py
 
 ### v0.2: Reinforcement Learning (R-STDP with Traces)
 **Location:** `v0.2_reinforcement_learning/`
-The network learns a binary classification task (Input 0->Output 0, Input 1->Output 1) via Dopamine feedback.
-We implemented **Eligibility Traces** to bridge the gap between action and reward, and **Input Boosting** to ensure fair learning for all patterns.
+The network learns a binary classification task via Dopamine feedback.
 ```bash
 cd v0.2_reinforcement_learning
 python experiment_rl.py
@@ -98,6 +101,30 @@ python experiment_brain_integration.py
     *   **Future Work**: Fine-tuning the balance between D1 (Go) and D2 (No-Go) learning rates to achieve stable convergence is the next objective.
 
 ![alt text](assets/result_v2.0_trinity_success.png)
+
+### v3.0: Genesis Architecture (The "Leviathan" Model)
+**Location:** `v3.0_cerebellum_tuning/`
+**The Ultimate Model.** A large-scale integration of 6 brain regions running on GPU (RTX 5080 optimized).
+
+This version introduces a comprehensive brain architecture including:
+*   **Hippocampus**: Context & Memory
+*   **Neocortex**: Perception & Processing
+*   **Basal Ganglia**: Action Selection (D1/D2 Pathways)
+*   **Cerebellum**: Error Correction & Fine-tuning (LTD)
+*   **Thalamus**: Sensory Gating & Relay
+*   **Amygdala**: Emotional Bias & Alertness
+
+```bash
+cd v3.0_cerebellum_tuning
+python experiment_brain_integration.py
+```
+
+*   **Result**: 
+    *   Successfully simulated a **multi-region brain network** with >30,000 neurons using sparse connectivity.
+    *   Achieved **>70% accuracy** in complex mixed-context tasks, surpassing v2.0 stability.
+    *   Demonstrated **Homeostasis**: The network self-regulates firing rates to prevent epilepsy or death, maintaining a healthy sparse firing rate (~3%).
+
+![alt text](assets/result_v3.0_genesis_success.png)
 
 ## 👤 Author
 
