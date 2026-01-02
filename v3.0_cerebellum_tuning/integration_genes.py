@@ -1,12 +1,11 @@
 import numpy as np
 
 # ==========================================
-# 🧬 Integrated Genes (v3.0 Trinity)
+# 🧬 Integrated Genes - Fixed
 # ==========================================
 
 # --- 1. Hippocampus Parameters ---
 HC_TYPES = {
-    "EC":  {"a": 0.02, "b": 0.2,  "c": -65.0, "d": 8.0}, 
     "GC":  {"a": 0.02, "b": 0.2,  "c": -65.0, "d": 8.0}, 
     "CA3": {"a": 0.02, "b": 0.2,  "c": -55.0, "d": 4.0}, 
     "CA1": {"a": 0.02, "b": 0.2,  "c": -65.0, "d": 6.0}, 
@@ -45,7 +44,7 @@ def generate_hc_connections(n_pre, n_post, connection_prob, weight_val, random_w
 
 # --- 2. Neocortex Parameters ---
 def generate_cx_params(n_neurons):
-    # RS
+    # RS (Regular Spiking)
     a = np.full(n_neurons, 0.02, dtype=np.float32)
     b = np.full(n_neurons, 0.2, dtype=np.float32)
     c = np.full(n_neurons, -65.0, dtype=np.float32)

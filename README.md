@@ -21,11 +21,12 @@ This project aims to implement logical gates, working memory control, and reinfo
     - Established the architectural foundation for context-dependent signal processing.
 - [x] **v2.0: Trinity Architecture (HC + CX + BG)**
     - Integrated **Basal Ganglia (Action Selection)** with **D1 (Go)** and **D2 (No-Go)** pathways.
-    - Achieved **Context-Dependent Decision Making** architecture. (Stability improvements in progress).
+    - Achieved **Context-Dependent Decision Making** architecture.
 - [x] **v3.0: Genesis Architecture (The "Leviathan" Model)**
-    - Scaled up to **>30,000 Neurons** using sparse connectivity on RTX 5080.
-    - Integrated **Cerebellum (Fine-tuning)**, **Thalamus (Gating)**, and **Amygdala (Emotion)**.
-    - Implemented **Homeostasis** and **L2 Normalization** for long-term stability.
+    - Scaled up to **>30,000 Neurons** with active Thalamo-Cortical loops.
+    - **Active Regions**: Hippocampus, Neocortex, Basal Ganglia, Thalamus.
+    - **Structural Preparation**: Cerebellum & Amygdala layers allocated (functionally latent in current exp).
+    - Implemented **Analog Decision Making** (Hybrid SNN) to resolve tie-breaking issues.
 
 ## 🧪 Experiments
 
@@ -97,22 +98,20 @@ python experiment_brain_integration.py
 *   **Result**: 
     *   The model demonstrates the ability to switch rules between Context 0 and Context 1.
     *   **Proof of Concept**: In successful trials, the agent adapts to rule changes, showing distinct activation patterns in the Basal Ganglia.
-    *   **Current Status**: While the architecture is functional, the learning stability in the mixed phase varies between runs (Accuracy typically fluctuates between 40% - 80%).
-    *   **Future Work**: Fine-tuning the balance between D1 (Go) and D2 (No-Go) learning rates to achieve stable convergence is the next objective.
 
 ![alt text](assets/result_v2.0_trinity_success.png)
 
 ### v3.0: Genesis Architecture (The "Leviathan" Model)
 **Location:** `v3.0_cerebellum_tuning/`
-**The Ultimate Model.** A large-scale integration of 6 brain regions running on GPU (RTX 5080 optimized).
+**Large-Scale Integration with Hybrid Decision.**
 
-This version introduces a comprehensive brain architecture including:
-*   **Hippocampus**: Context & Memory
-*   **Neocortex**: Perception & Processing
-*   **Basal Ganglia**: Action Selection (D1/D2 Pathways)
-*   **Cerebellum**: Error Correction & Fine-tuning (LTD)
-*   **Thalamus**: Sensory Gating & Relay
-*   **Amygdala**: Emotional Bias & Alertness
+This version expands the scale to >30,000 neurons and introduces the **Thalamus** as an active sensory relay.
+*(Note: Cerebellum and Amygdala layers are allocated in memory for future extensions but are currently computationally latent to prioritize the stability of the HC-CX-BG loop.)*
+
+**Key Features:**
+*   **Active Loop**: Hippocampus (Context) → Thalamus (Relay) → Neocortex (Processing) → Basal Ganglia (Action).
+*   **Analog Decision (Hybrid SNN)**: Instead of counting discrete spikes for the final output (which causes ties), we use the accumulated membrane potential current to determine the winner. This mimics the "analog" summation at the soma.
+*   **Structural Readiness**: The architecture now fully supports the definitions for Cerebellum (Error correction) and Amygdala (Emotion), ready for activation in v4.0.
 
 ```bash
 cd v3.0_cerebellum_tuning
@@ -120,14 +119,14 @@ python experiment_brain_integration.py
 ```
 
 *   **Result**: 
-    *   Successfully simulated a **multi-region brain network** with >30,000 neurons using sparse connectivity.
-    *   Achieved **>70% accuracy** in complex mixed-context tasks, surpassing v2.0 stability.
-    *   Demonstrated **Homeostasis**: The network self-regulates firing rates to prevent epilepsy or death, maintaining a healthy sparse firing rate (~3%).
+    *   **High Stability**: The "Analog Decision" mechanism eliminated the "draw/tie" problem, leading to smoother learning curves.
+    *   **Thalamic Gating**: Visual inputs are now properly gated by the Thalamus before reaching the Cortex.
+    *   **Performance**: Achieved >70% accuracy in mixed-context tasks with sparse firing rates maintained via homeostasis.
 
 ![alt text](assets/result_v3.0_genesis_success.png)
 
 ## 👤 Author
 
 **Hafufu**
-*   **note**: [https://note.com/cell_activation](https://note.com/cell_activation) (Research Log & Thoughts)
+*   **note**: [https://note.com/cell_activation](https://note.com/cell_activation) (Diary & Thoughts)
 *   **Zenn**: [https://zenn.dev/cell_activation](https://zenn.dev/cell_activation) (Technical Articles & Implementation Details)

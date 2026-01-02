@@ -9,7 +9,7 @@ import integration_genes as genes
 import integration_kernels as kernels
 
 # ==========================================
-# 🧪 Experiment 18: The Trinity Brain (v3.0 Final)
+# 🧪 Experiment 18: The Integration Brain (v3.0 Genesis - Analog Decision)
 # ==========================================
 
 SEED = 42
@@ -37,20 +37,21 @@ N_TH = 4096
 N_AM = 1024      
 
 # ★ TUNED PARAMETERS (Balanced)
-BRIDGE_GAIN = 2.0        # Reduced to prevent saturation
+BRIDGE_GAIN = 2.0        
 DA_BASE = 0.05           
 LR_BG = 0.05             
-TARGET_FIRE_RATE = 0.05  # Sparse firing
-INHIBITION_GAIN = 100.0  # Strong inhibition to stop seizures
+TARGET_FIRE_RATE = 0.05  
+INHIBITION_GAIN = 100.0  
 BG_BIAS = 0.0            
-MAX_WEIGHT_SUM = 20.0    # L2 Norm (Small value for vector length)
+MAX_WEIGHT_SUM = 20.0    
 TEACHING_CURRENT = 20.0  
 LR_OUT = 0.2             
 
 class GenesisBrain:
     def __init__(self):
-        print(f"🧠 Building Genesis Brain v3.0 (Final Release)...")
+        print(f"🧠 Building Genesis Brain v3.0 (Analog Decision)...")
         print(f"   [DG:{N_H_DG}] [CX:{N_CX_IN}] [BG:{N_BG_MSN}]")
+        print(f"   [Architecture: HC-CX-BG-CB-TH-AM Loop]")
         
         # 1. Hippocampus
         self.h_dg = genes.generate_hc_params(N_H_DG, "GC")
@@ -212,11 +213,7 @@ class GenesisBrain:
             dg_input[self.ctx1_idx[self.ctx1_idx >= half_dg]] = 300.0 
         self.d_h_dg['i'].copy_to_device(dg_input)
         
-        # Visual Template
-        if context_idx == -1:
-             vis_stimulus = np.random.uniform(10.0, 30.0, N_CX_IN).astype(np.float32)
-        else:
-             vis_stimulus = self.vis_templates[context_idx]
+        vis_stimulus = self.vis_templates[context_idx] if context_idx != -1 else np.random.uniform(10.0, 30.0, N_CX_IN).astype(np.float32)
         d_vis = cuda.to_device(vis_stimulus)
 
         kernels.clear_buffer_2d_kernel[self.dim_cx_bg[0], self.dim_cx_bg[1]](self.d_trace_cx_bg, N_CX_IN, N_BG_MSN)
@@ -248,13 +245,13 @@ class GenesisBrain:
                 self.d_c_in['s'], self.d_pre_trace_cx, 0.95, 1.0, N_CX_IN
             )
 
-            # --- Basal Ganglia ---
+            # --- Basal Ganglia (Homeostasis) ---
             kernels.clear_buffer_1d_kernel[self.dim_bg[0], self.dim_bg[1]](self.d_bg_msn['i'], N_BG_MSN)
             kernels.dense_synapse_kernel[self.dim_cx_bg[0], self.dim_cx_bg[1]](
                 self.d_c_in['s'], self.d_bg_msn['i'], self.d_w_cx_bg, N_CX_IN, N_BG_MSN
             )
             
-            # Adaptive Threshold (Homeostasis)
+            # Adaptive Threshold Update
             kernels.update_bg_neuron_kernel[self.dim_bg[0], self.dim_bg[1]](
                 self.d_bg_msn['v'], self.d_bg_msn['u'], self.d_bg_msn['th'], 
                 self.d_bg_msn['a'], self.d_bg_msn['b'], self.d_bg_msn['c'], self.d_bg_msn['d'],
@@ -276,7 +273,7 @@ class GenesisBrain:
             out_spikes = self.d_dec_out['s'].copy_to_host()
             out_spike_counts += out_spikes
             
-            # Inhibition
+            # Inhibition (Winner-Take-All for BG)
             current_fire_count = np.sum(bg_spikes)
             fire_frac = current_fire_count / N_BG_MSN
             if fire_frac > TARGET_FIRE_RATE * 2: 
@@ -299,7 +296,7 @@ class GenesisBrain:
 
 def main():
     brain = GenesisBrain()
-    print(f"🚀 Starting Genesis Learning (v3.0)...")
+    print(f"🚀 Starting Genesis Learning (v3.0 Final)...")
     
     history = []
     win_window = []
@@ -325,16 +322,26 @@ def main():
             
             bg_spikes, out_spikes = brain.run_trial(ctx, target, 0.0, is_testing=is_testing)
             
-            # Decision
-            score0 = out_spikes[0]
-            score1 = out_spikes[1]
+            # ★ FIX: Use Analog Score for Decision (Hybrid SNN)
+            # This avoids the "33 vs 33" tie problem
+            # Calculate total input current to Decision Layer instead of just counting spikes
+            
+            # Get weights (Host)
+            w_bg_out = brain.d_w_bg_out.copy_to_host() # (4096, 2)
+            bg_spikes_host = bg_spikes.astype(np.float32)
+            
+            # Calculate potential: (1, 4096) dot (4096, 2) = (1, 2)
+            scores = np.dot(bg_spikes_host, w_bg_out)
+            
+            score0 = scores[0]
+            score1 = scores[1]
             
             if is_testing:
                 action = 0 if score0 > score1 else 1
                 if score0 == score1: action = np.random.randint(0, 2)
             else:
-                scores = np.array([score0, score1], dtype=np.float32)
-                scores += np.random.uniform(0, 2.0, 2)
+                # Add exploration noise
+                scores += np.random.uniform(0, 5.0, 2) 
                 action = np.argmax(scores)
             
             is_correct = (action == target)
@@ -344,7 +351,7 @@ def main():
                     brain.d_bg_msn['s'], brain.d_dec_out['s'], brain.d_w_bg_out, LR_OUT, N_BG_MSN, N_OUT
                 )
             else:
-                reward = -2.0
+                reward = -5.0
                 
             effective_dopamine = dopamine + (reward - reward_baseline)
             reward_baseline = (1.0 - baseline_alpha) * reward_baseline + baseline_alpha * reward
@@ -356,7 +363,6 @@ def main():
                 )
                 cuda.synchronize()
                 
-                # ★ L2 Normalization (Every 10 steps)
                 if i % 10 == 0:
                     kernels.normalize_weights_l2_kernel[brain.dim_bg[0], brain.dim_bg[1]](
                         brain.d_w_cx_bg, N_CX_IN, N_BG_MSN, MAX_WEIGHT_SUM
@@ -381,24 +387,25 @@ def main():
                 except:
                     trace_sum = -1.0
                 
-                print(f"Trial {total_trial:3d}: Ctx={ctx} | Res={'✅' if is_correct else '❌'} | Acc={acc:.2f} | Fire={msn_fire} | Rate={rate:.4f} | W_mean={w_mean:.4f} | Out={score0}vs{score1}")
+                print(f"Trial {total_trial:3d}: Ctx={ctx} | Res={'✅' if is_correct else '❌'} | Acc={acc:.2f} | Fire={msn_fire} | Rate={rate:.4f} | W_mean={w_mean:.4f} | Out={score0:.1f}vs{score1:.1f}")
 
+    # Auto-saving graph to correct location
+    plt.figure(figsize=(10, 6))
+    plt.plot(history)
+    plt.axhline(y=0.5, color='r', linestyle='--', label="Random Chance")
+    plt.axvline(x=200, color='gray', linestyle=':', alpha=0.5)
+    plt.axvline(x=400, color='gray', linestyle=':', alpha=0.5)
+    plt.title("Genesis Brain v3.0 Final")
+    plt.xlabel("Trial")
+    plt.ylabel("Accuracy")
+    
     current_dir = os.path.dirname(os.path.abspath(__file__))
     assets_dir = os.path.join(os.path.dirname(current_dir), 'assets')
     if not os.path.exists(assets_dir):
         try: os.makedirs(assets_dir)
         except: assets_dir = current_dir
             
-    save_path = os.path.join(assets_dir, "result_v3.0_genesis.png")
-    
-    plt.figure(figsize=(10, 6))
-    plt.plot(history)
-    plt.axhline(y=0.5, color='r', linestyle='--', label="Random Chance")
-    plt.axvline(x=200, color='gray', linestyle=':', alpha=0.5)
-    plt.axvline(x=400, color='gray', linestyle=':', alpha=0.5)
-    plt.title("Genesis Brain v3.0 (Experiment 18)")
-    plt.xlabel("Trial")
-    plt.ylabel("Accuracy")
+    save_path = os.path.join(assets_dir, "result_v3.0_genesis_success.png")
     plt.savefig(save_path)
     print(f"📊 Graph saved to: {save_path}")
     plt.show()
