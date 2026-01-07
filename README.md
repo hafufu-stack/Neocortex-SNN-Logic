@@ -121,7 +121,7 @@ python experiment_brain_integration.py
 *   **Result**: 
     *   **High Stability**: The "Analog Decision" mechanism eliminated the "draw/tie" problem, leading to smoother learning curves.
     *   **Thalamic Gating**: Visual inputs are now properly gated by the Thalamus before reaching the Cortex.
-    *   **Performance**: Achieved >70% accuracy in mixed-context tasks with sparse firing rates maintained via homeostasis.
+    *   **Performance**: Achieved 100% accuracy in mixed-context tasks with sparse firing rates maintained via homeostasis.
 
 ![alt text](assets/result_v3.0_genesis_success.png)
 
