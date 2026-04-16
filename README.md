@@ -127,6 +127,6 @@ python experiment_brain_integration.py
 
 ## 👤 Author
 
-**Hafufu**
+**Hiroto Funasaki**
 *   **note**: [https://note.com/cell_activation](https://note.com/cell_activation) (Diary & Thoughts)
 *   **Zenn**: [https://zenn.dev/cell_activation](https://zenn.dev/cell_activation) (Technical Articles & Implementation Details)
